@@ -1,0 +1,7 @@
+postgresql:
+  username: test
+  password: ${TEST_PASSWORD}
+  databases:
+    - test1
+    - test2
+    - test3

@@ -39,12 +39,17 @@ class TestAssets(unittest.TestCase):
                     <fes:ValueReference>STATUS</fes:ValueReference>
                     <fes:Literal>VALID</fes:Literal>
                 </fes:PropertyIsEqualTo>
+                <fes:PropertyIsEqualTo>
+                    <fes:ValueReference>STATUS1</fes:ValueReference>
+                    <fes:Literal>VALID1</fes:Literal>
+                </fes:PropertyIsEqualTo>
             </fes:And>
         </fes:Filter>
         '''
         XSD['filter_all'].validate(test_filter)
         f = XSD['filter_all'].to_dict(test_filter)
         self.assertEqual(f['fes:And']['fes:Or'][0]['fes:PropertyIsEqualTo'][0]['fes:ValueReference'], 'FIELD1')
+        print(f)
 
 if __name__ == '__main__':
     unittest.main()
