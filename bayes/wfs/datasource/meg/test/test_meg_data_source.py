@@ -156,6 +156,87 @@ class TestMegDataSource(unittest.TestCase):
         data = megdata.get_feature(['public.gis_block'], ['a'], ['id', 'geom', 'district_id', 'city_id'], filter = eq_filter)
         leaflet.map(data, 'output.html')
 
+    def test_function(self):
+        cfg = Configuration(join(dirname(__file__), 'config.yaml'))
+        megdata = MegDataSource(cfg = cfg)
+
+        # abs, degress, acos, exp, asin, floor, sign, atan
+        # log, sin, atn2, log10, sqrt, ceiling, pi, square,
+        # cos, power, tan, cot, radians
+        f = Function('abs', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('degrees', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('acos', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('exp', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('asin', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('floor', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('sign', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('atan', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('log', [Literal(1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('sin', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('sqrt', [Literal(1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('ceiling', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('cos', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('power', [Literal(-1), Literal(2)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('tan', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('cot', [Literal(-1)])
+        print(megdata.get_feature(['public.gis_block'], None, [f]))
+
+        f = Function('radians', [Literal(-1)])
+        print('radians', megdata.get_feature(['public.gis_block'], None, [f]))
+
+    def test_function_in_where(self):
+        cfg = Configuration(join(dirname(__file__), 'config.yaml'))
+        megdata = MegDataSource(cfg = cfg)
+
+        f = EqualTo(ValueRef('public.gis_block/id'), Function('radians', [Literal(-1)]))
+        print(megdata.get_feature(['public.gis_block'], None, filter = f, fetch_data = False))
+    
+    def test_sort_by(self):
+        cfg = Configuration(join(dirname(__file__), 'config.yaml'))
+        megdata = MegDataSource(cfg = cfg)
+        f = EqualTo(ValueRef('public.gis_block/id'), Function('radians', [Literal(-1)]))
+        print('sort_by', megdata.get_feature(['public.gis_block'], None, filter = f, sort_by = ValueRef('public.gis_block/id'), fetch_data = False))
+        print('sort_by', megdata.get_feature(['public.gis_block'], None, filter = f, sort_by = (ValueRef('public.gis_block/id'), 'desc'), fetch_data = False))
+        print('sort_by', megdata.get_feature(['public.gis_block'], None, filter = f, sort_by = [(ValueRef('public.gis_block/id'), 'desc'), ValueRef('public.gis_block/geom')], fetch_data = False))
+
+    def test_paginate(self):
+        cfg = Configuration(join(dirname(__file__), 'config.yaml'))
+        megdata = MegDataSource(cfg = cfg)
+
+        f = Or([EqualTo(ValueRef('public.gis_block/id'), Literal(660000625)),
+            EqualTo(ValueRef('public.gis_block/id'), Literal(660000624))])
+
+        print('paginate', megdata.get_feature(['public.gis_block'], None, page_count = 20, filter = f))
 
 if __name__ == '__main__':
     unittest.main()

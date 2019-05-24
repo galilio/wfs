@@ -46,3 +46,22 @@ class InvalidFilter(Exception):
         self.op = op
         self.obj = obj
         self.msg = msg
+
+class TableNotFound(Exception):
+    def __init__(self, table):
+        super().__init__(f'Table {table} Not Found')
+        self.table = table
+
+class FilterObjectNotSupported(Exception):
+    def __init__(self, obj):
+        super().__init__(f'Filter Object {obj} Not Supported')
+        self.obj = obj
+
+class FuncNotSupported(Exception):
+    def __init__(self, obj):
+        super().__init__(f'Function Not Support {obj.func}')
+        self.obj = obj
+
+class EmptyResult(Exception):
+    def __init__(self):
+        super().__init__('EmptyResult Exception.')

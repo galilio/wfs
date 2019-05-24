@@ -2,8 +2,13 @@ from geojson import Feature, FeatureCollection
 from geoalchemy2.elements import WKBElement
 from shapely import wkb
 
+from bayes.wfs.core.exceptions import *
+
+
 def _pack_first_feature(result_proxy):
     row = result_proxy.fetchone()
+    if not row:
+        raise EmptyResult()
 
     keys, values = row.keys(), row.values()
 
@@ -24,7 +29,6 @@ def pack_result_proxy(tables, result_proxy):
     features = []
 
     idx, keys, feature = _pack_first_feature(result_proxy)
-    print(idx)
     features.append(feature)
 
     for row in result_proxy:

@@ -2,8 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy import Table, MetaData
 from sqlalchemy.sql import select
 from sqlalchemy.sql.expression import alias
-from sqlalchemy.exc import ProgrammingError
-
+from sqlalchemy.exc import ProgrammingError, DataError
+from sqlalchemy import desc
 from sqlalchemy.sql import and_, or_, not_ # logic
 import geoalchemy2
 
@@ -24,6 +24,7 @@ from bayes.wfs.core import OperationsMetadata
 from bayes.wfs.core import FeatureType
 from bayes.wfs.core import InvalidTypeName, AliasesMissmatch, ProjectionFailed, NoSuchProperty
 from bayes.wfs.core.config import InvalidKeyException
+from bayes.wfs.core.filter import Function
 from bayes.wfs.datasource.meg import filter as meg_filter
 from bayes.wfs.datasource.meg import meg_feature
 
@@ -211,7 +212,7 @@ class MegDataSource(DataSource):
             return False
         return isinstance(a[0], (tuple, list))
 
-    def _map_projection(self, tables, projection):
+    def _map_projection(self, mapper, tables, projection):
         if not projection:
             return tables
 
@@ -225,18 +226,45 @@ class MegDataSource(DataSource):
         for i, table in enumerate(tables):
             table_projection = projection[i] if len(tables) > 1 else projection
             for ps in table_projection:
-                try:
-                    projected.append(table.c[ps])
-                except KeyError:
-                    raise NoSuchProperty(table.name, ps)
+                if isinstance(ps, Function):
+                    f = meg_filter.filter(mapper, ps)
+                    projected.append(f)
+                else:
+                    try:
+                        projected.append(table.c[ps])
+                    except KeyError:
+                        raise NoSuchProperty(table.name, ps)
 
         return projected
+
+    def _sort_by(self, mapper, sort_by):
+        sort_bys = []
+        if isinstance(sort_by, list):
+            for item in sort_by:
+                if isinstance(item, (tuple, list)):
+                    sort = meg_filter.filter(mapper, item[0])
+                    if len(item) > 1 and item[1] == 'desc':
+                        sort = desc(sort)
+                else:
+                    sort = meg_filter.filter(mapper, item)
+
+                sort_bys.append(sort)
+        elif isinstance(sort_by, tuple):
+            sort = meg_filter.filter(mapper, sort_by[0])
+            if len(sort_by) > 1 and sort_by[1] == 'desc':
+                sort = desc(sort)
+            sort_bys.append(sort)
+        else:
+            sort_bys.append(meg_filter.filter(mapper, sort_by))
+
+        return sort_bys
 
     def debug(self, msg):
         if self.config.get('MegDataSource.debug', False):
             logging.info(msg)
+        print(msg)
 
-    def get_feature(self, typenames, aliases = None, projection = None, filter = None, bbox = None, sort_by = None, fetch_data = True):
+    def get_feature(self, typenames, aliases = None, projection = None, filter = None, bbox = None, sort_by = None, page = 0, page_count = None, fetch_data = True):
         super().get_feature(typenames, aliases, projection, filter, bbox, sort_by)
 
         tables = []
@@ -250,21 +278,34 @@ class MegDataSource(DataSource):
 
             tables.append(table)
         table_mapper = meg_filter.TableMapper(tables, typenames, aliases)
-        tables = self._map_projection(tables, projection)
+        tables = self._map_projection(table_mapper, tables, projection)
 
         sql = select(tables)
         if filter:
             where = meg_filter.filter(table_mapper, filter)
             sql = sql.where(where)
 
-        self.debug(sql)
+        if page_count is not None and page_count > 0 and fetch_data:
+            count_res = sql.order_by(None).alias('_').count()
+            total_res = self.engine.execute(count_res).scalar()
 
+            sql = sql.limit(page_count).offset(page * page_count)
+
+        if sort_by is not None:
+            sql = sql.order_by(*self._sort_by(table_mapper, sort_by))
+
+        self.debug(sql)
         if not fetch_data:
             return sql
 
         try:
-            return meg_feature.pack_result_proxy(table_mapper, self.engine.execute(sql))
-        except ProgrammingError as e:
+            retval = meg_feature.pack_result_proxy(table_mapper, self.engine.execute(sql))
+            if not hasattr(retval, 'properties'):
+                retval.properties = {}
+            if page_count is not None and page_count > 0:
+                retval.properties['feature_count'] = total_res
+                retval.properties['feautre_pages'] = (lambda x, y: x // y + (1 if x % y else 0))(total_res, page_count)
+                retval.properties['feautre_page'] = page
+            return retval
+        except (ProgrammingError, DataError) as e:
             raise SQLError(sql, str(e))
-
-

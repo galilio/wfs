@@ -3,16 +3,7 @@ import geoalchemy2
 from sqlalchemy import func
 
 from bayes.wfs.core.filter import *
-
-class TableNotFound(Exception):
-    def __init__(self, table):
-        super().__init__(f'Table {table} Not Found')
-        self.table = table
-
-class FilterObjectNotSupported(Exception):
-    def __init__(self, obj):
-        super().__init__(f'Filter Object {obj} Not Supported')
-        self.obj = obj
+from bayes.wfs.core.exceptions import *
 
 class TableMapper(object):
     '''
@@ -113,6 +104,35 @@ def st_dwithin(mapper, obj):
 def wkt(mapper, obj):
     return obj.wkt
 
+_func_maps = {
+    'abs': func.abs,
+    'degrees': func.degrees,
+    'acos': func.acos,
+    'exp': func.exp,
+    'asin': func.asin,
+    'floor': func.floor,
+    'sign': func.sign,
+    'atan': func.atan,
+    'log': func.log,
+    'sin': func.sin,
+    'sqrt': func.sqrt,
+    'ceiling': func.ceiling,
+    'cos': func.cos,
+    'power': func.power,
+    'tan': func.tan,
+    'cot': func.cot,
+    'radians': func.radians
+}
+def function(mapper, obj):
+    if obj.func not in _func_maps:
+        raise FuncNotSupported(obj)
+    f = _func_maps[obj.func]
+
+    args = []
+    for arg in obj.args:
+        args.append(filter(mapper, arg))
+    return f(*args)
+
 _mapping = {
     ValueRef: value_ref,
     Literal: literal,
@@ -137,11 +157,11 @@ _mapping = {
     ST_Contains: st_contains,
     ST_DWithin: st_dwithin,
     Wkt: wkt,
+    Function: function,
 }
 
 def filter(mapper, obj):
-    print(f'filter {obj}')
     if obj.__class__ not in _mapping:
         raise FilterObjectNotSupported(obj)
-    
+
     return _mapping[obj.__class__](mapper, obj)

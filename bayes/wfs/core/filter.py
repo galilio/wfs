@@ -28,7 +28,7 @@ class Function(object):
     def __init__(self, func, args = []):
         super().__init__()
 
-        self.func = func
+        self.func = func.lower()
         self.args = args
 
     @classmethod
