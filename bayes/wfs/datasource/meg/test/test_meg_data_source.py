@@ -1,8 +1,9 @@
 import unittest
-
+from bayes.geojson import leaflet
 from bayes.wfs.datasource.meg import *
 from bayes.wfs.core import Configuration
 from bayes.wfs.core.exceptions import *
+from bayes.wfs.core.filter import *
 from os.path import dirname, join
 
 class TestMegDataSource(unittest.TestCase):
@@ -55,13 +56,106 @@ class TestMegDataSource(unittest.TestCase):
 
         self.assertRaises(AliasesMissmatch, megdata.get_feature, ['test1', 'test2'], [])
         self.assertRaises(InvalidTypeName, megdata.get_feature, ['test1', 'test2'])
-        megdata.get_feature(['public.gis_block'])
-        megdata.get_feature(['public.gis_block'], ['a'])
 
         self.assertRaises(ProjectionFailed, megdata.get_feature, ['public.gis_block'], projection = [['a']])
         self.assertRaises(NoSuchProperty, megdata.get_feature, ['public.gis_block'], projection = ['a'])
 
-        megdata.get_feature(['public.gis_block'], ['a'], ['geom', 'tags', 'show'])
+        # megdata.get_feature(['public.gis_block'], ['a'], ['geom', 'tags', 'show'])
+
+    def test_get_feature_filter(self):
+        cfg = Configuration(join(dirname(__file__), 'config.yaml'))
+        megdata = MegDataSource(cfg = cfg)
+
+        eq_filter = EqualTo(ValueRef('public.gis_block/id'), Literal(660000625))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = EqualTo(Literal('23432'), Literal(441500))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = And([EqualTo(ValueRef('public.gis_block/city_id'), Literal(441500)),
+            EqualTo(ValueRef('public.gis_block/id'), Literal(660000625))])
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = Or([EqualTo(ValueRef('public.gis_block/id'), Literal(660000624)),
+            EqualTo(ValueRef('public.gis_block/id'), Literal(660000625))])
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = And([Or([EqualTo(ValueRef('public.gis_block/id'), Literal(660000624)),
+            EqualTo(ValueRef('public.gis_block/id'), Literal(660000625))]),
+            Not(EqualTo(ValueRef('public.gis_block/id'), Literal(660000625)))])
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = NotEqualTo(ValueRef('public.gis_block/id'), Literal(660000624))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = NotEqualTo(ValueRef('public.gis_block/id'), Literal(660000624))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = LessThan(ValueRef('public.gis_block/id'), Literal(660000624))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = GreaterThan(ValueRef('public.gis_block/id'), Literal(660000624))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = LessThanOrEqualTo(ValueRef('public.gis_block/id'), Literal(660000624))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = GreaterThanOrEqualTo(ValueRef('public.gis_block/id'), Literal(660000624))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = Like(ValueRef('public.gis_block/tags'), Literal(''))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = Null(ValueRef('public.gis_block/id'))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = Not(Null(ValueRef('public.gis_block/id')))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = Not(LessThan(ValueRef('public.gis_block/id'), Literal(660000625)))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = LessThan(Literal(660000624), Literal(660000625))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        polygon = Wkt('SRID=4326;POLYGON((73.502355 3.83703,73.502355 53.563624,135.09567 53.563624,135.09567 3.83703,73.502355 3.83703))')
+        eq_filter = ST_Equals(ValueRef('public.gis_block/geom'), polygon)
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = ST_Disjoint(ValueRef('public.gis_block/geom'), polygon)
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = ST_Touches(ValueRef('public.gis_block/geom'), polygon)
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = ST_Within(ValueRef('public.gis_block/geom'), polygon)
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = ST_Overlaps(ValueRef('public.gis_block/geom'), polygon)
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = ST_Crosses(ValueRef('public.gis_block/geom'), polygon)
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = ST_Intersects(ValueRef('public.gis_block/geom'), polygon)
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = ST_Contains(ValueRef('public.gis_block/geom'), polygon)
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = ST_DWithin(ValueRef('public.gis_block/geom'), polygon, Literal(100))
+        megdata.get_feature(['public.gis_block'], ['a'], ['id', 'district_id', 'city_id'], filter = eq_filter, fetch_data = False)
+
+        eq_filter = ST_Contains(ValueRef('public.city_boundary/boundary'), polygon)
+        megdata.get_feature(['public.gis_block', 'public.city_boundary'], projection = [['id', 'geom'], ['id', 'boundary']], filter = eq_filter, fetch_data = False)
+    
+    def test_pack_feature(self):
+        cfg = Configuration(join(dirname(__file__), 'config.yaml'))
+        megdata = MegDataSource(cfg = cfg)
+        eq_filter = NotEqualTo(ValueRef('public.gis_block/id'), Literal(660000625))
+        data = megdata.get_feature(['public.gis_block'], ['a'], ['id', 'geom', 'district_id', 'city_id'], filter = eq_filter)
+        leaflet.map(data, 'output.html')
+
 
 if __name__ == '__main__':
     unittest.main()

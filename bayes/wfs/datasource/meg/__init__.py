@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy import Table, MetaData
 from sqlalchemy.sql import select
 from sqlalchemy.sql.expression import alias
+from sqlalchemy.exc import ProgrammingError
 
 from sqlalchemy.sql import and_, or_, not_ # logic
 import geoalchemy2
@@ -23,6 +24,8 @@ from bayes.wfs.core import OperationsMetadata
 from bayes.wfs.core import FeatureType
 from bayes.wfs.core import InvalidTypeName, AliasesMissmatch, ProjectionFailed, NoSuchProperty
 from bayes.wfs.core.config import InvalidKeyException
+from bayes.wfs.datasource.meg import filter as meg_filter
+from bayes.wfs.datasource.meg import meg_feature
 
 import logging
 
@@ -39,6 +42,12 @@ class DatabaseConnectError(Exception):
 class PostgisNotFoundException(Exception):
     def __init__(self):
         super().__init__('use "CREATE EXTENSION postgis" on database first.')
+
+class SQLError(Exception):
+    def __init__(self, sql, error):
+        super().__init__(f'{sql} ERROR: {error}')
+        self.sql = sql
+        self.error = error
 
 class GeometryTable(object):
     class Column(object):
@@ -223,10 +232,11 @@ class MegDataSource(DataSource):
 
         return projected
 
-    def _filter(self, filter, tables, typenames, aliases):
-        return q
+    def debug(self, msg):
+        if self.config.get('MegDataSource.debug', False):
+            logging.info(msg)
 
-    def get_feature(self, typenames, aliases = None, projection = None, filter = None, bbox = None, sort_by = None):
+    def get_feature(self, typenames, aliases = None, projection = None, filter = None, bbox = None, sort_by = None, fetch_data = True):
         super().get_feature(typenames, aliases, projection, filter, bbox, sort_by)
 
         tables = []
@@ -239,5 +249,22 @@ class MegDataSource(DataSource):
                 table = table.alias(aliases[i])
 
             tables.append(table)
+        table_mapper = meg_filter.TableMapper(tables, typenames, aliases)
         tables = self._map_projection(tables, projection)
-        print(select(tables))
+
+        sql = select(tables)
+        if filter:
+            where = meg_filter.filter(table_mapper, filter)
+            sql = sql.where(where)
+
+        self.debug(sql)
+
+        if not fetch_data:
+            return sql
+
+        try:
+            return meg_feature.pack_result_proxy(table_mapper, self.engine.execute(sql))
+        except ProgrammingError as e:
+            raise SQLError(sql, str(e))
+
+

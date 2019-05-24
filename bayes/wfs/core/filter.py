@@ -16,6 +16,8 @@ class ValueRef(object):
         self.name = parts[-1]
         if len(parts) > 1:
             self.feature = parts[0]
+        else:
+            self.feature = None
 
     @classmethod
     def parse(cls, val):
@@ -278,6 +280,17 @@ class GeoJSON(object):
             raise InvalidFilter('fes:GeoJSON', obj, 'GeoJSON should be str.')
         return GeoJSON(obj)
 
+class Wkt(object):
+    def __init__(self, wkt):
+        super().__init__()
+        self.wkt = wkt
+
+    @classmethod
+    def parse(cls, obj):
+        if not isinstance(obj, str):
+            raise InvalidFilter('fes:Wkt', obj, 'Wkt should be str.')
+        return Wkt(obj)
+
 _mapping = {
     'fes:PropertyIsEqualTo': EqualTo,
     'fes:PropertyIsNotEqualTo': NotEqualTo,
@@ -304,6 +317,7 @@ _mapping = {
     'fes:Function': Function,
     'fes:Literal': Literal,
     'fes:GeoJSON': GeoJSON,
+    'fes:Wkt': Wkt
 }
 
 def parse_fes(key, fes_filter):
