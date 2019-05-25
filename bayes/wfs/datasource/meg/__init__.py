@@ -32,6 +32,8 @@ import logging
 
 WFS_ENDPOINT = '/wfs'
 
+__wfs_version__ = '2.0.0'
+
 class MissingConfigError(Exception):
     def __init__(self):
         super().__init__('When use MegDataSource, you should include MegDataSource.db section in config.yaml.')
@@ -309,3 +311,5 @@ class MegDataSource(DataSource):
             return retval
         except (ProgrammingError, DataError) as e:
             raise SQLError(sql, str(e))
+
+__wfs_cls__ = MegDataSource

@@ -23,5 +23,5 @@ def load_datasource(root = default_root, pkg = default_pkg):
 
         m = importlib.import_module(pkg + '.' + module)
         if hasattr(m, '__wfs_version__'):
-            modules.append(m)
+            modules.append(m.__wfs_cls__)
     return modules
