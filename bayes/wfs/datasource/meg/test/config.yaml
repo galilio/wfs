@@ -1,0 +1,2 @@
+MegDataSource:
+    db: ${MEG_POSTGRESQL_CONNECT}
