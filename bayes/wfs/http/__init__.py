@@ -23,7 +23,7 @@ def load_wfs(cfg_path = None):
 
     bp.encoder = importlib.import_module(cfg.get('wfs.output_encoder', 'bayes.wfs.encoder.json'))
 
-@bp.get('/wfs/caps')
+@bp.get('/wfs/capabilities')
 def wfs():
     kwargs = {
         'accept_versions': [],
@@ -34,6 +34,10 @@ def wfs():
 
     if request.GET.accept_versions:
         kwargs['accept_versions'] = request.GET.accept_versions.split(',')
+    if request.GET.sections:
+        kwargs['sections'] = request.GET.sections.split(',')
+    if request.GET.accept_formats:
+        kwargs['accept_formats'] = request.GET.accept_formats
     
     caps = bp.wfs.get_capabilities(**kwargs)
     return bp.encoder.encode(caps)
