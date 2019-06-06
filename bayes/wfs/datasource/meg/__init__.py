@@ -60,10 +60,13 @@ class GeometryTable(object):
             self.dimension = dimension
             self.type = type
 
-    def __init__(self, schema, name, columns = {}):
+    def __init__(self, schema, name, columns = None):
         self.schema = schema
         self.name = name
-        self.columns = columns
+        if columns is None:
+            self.columns = {}
+        else:
+            self.columns = columns
         self.table = None
 
 class MegDataSource(DataSource):
