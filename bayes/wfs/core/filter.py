@@ -228,12 +228,18 @@ class SpatialOperator(Operator):
     @classmethod
     def parse(cls, obj):
         cls_name = cls.__name__
-        if not isinstance(obj, list) or len(obj) != 2:
-            raise InvalidFilter(f'fes:PropertyIs{cls_name}', obj,
-                                f'Children of {cls_name} need to be list with length 2')
-
-        geom1 = parse_fes(*(obj[0].popitem()))
-        geom2 = parse_fes(*(obj[1].popitem()))
+        if not isinstance(obj, list):
+            raise InvalidFilter(f'fes:PropertyIs{cls_name}', obj, f'Children of {cls_name} need to be list')
+        for item in obj:
+            keys = list(item.keys())
+            if len(keys) == 1 and isinstance(item[keys[0]], list) and len(item[keys[0]]) == 2:
+                geom1 = parse_fes(keys[0], item[keys[0]][0])
+                geom2 = parse_fes(keys[0], item[keys[0]][1])
+            elif len(keys) == 2:
+                geom1 = parse_fes(keys[0], item[keys[0]])
+                geom2 = parse_fes(keys[1], item[keys[1]])
+            else:
+                raise InvalidFilter(f'fes:PropertyIs{cls_name}', item, 'Children of {cls_name} need to 2.')
 
         return cls(geom1, geom2)
 
