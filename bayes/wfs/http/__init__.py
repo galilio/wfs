@@ -1,8 +1,10 @@
+import json
+
 from pileus import proxy, rpc, get, post, bp, request
 import importlib
 import logging
-
-from bayes.wfs.core import Configuration
+from bayes.wfs.core import Configuration, EmptyResult
+from bayes.wfs.core.filter import GreaterThanOrEqualTo, ValueRef, Literal, parse_fes
 
 
 class NoWFSModuleFound(Exception):
@@ -28,7 +30,7 @@ def load_wfs(cfg_path=None):
 
 
 @bp.get('/wfs/capabilities')
-def wfs():
+def capabilities():
     kwargs = {
         'accept_versions': [],
         'sections': ['ALL'],
@@ -48,8 +50,25 @@ def wfs():
 
 
 @bp.get('/wfs/describe_feature_type')
-def wfs():
+def describe_feature_type():
     table_name = request.GET.tablenames.split(',')
 
     feature_types = bp.wfs.describe_feature_type(table_name)
     return {feature_type: bp.encoder.encode(feature_types.get(feature_type)) for feature_type in feature_types}
+
+
+@bp.get('/wfs/feature')
+def feature():
+    try:
+        table_name = request.GET.tablenames
+        properties = request.GET.properties
+        filters = request.GET.filters
+
+        eq_filter = parse_fes('fes:And', json.loads(filters))
+        return bp.wfs.get_feature(json.loads(table_name), None, json.loads(properties), filter=eq_filter, fetch_data=True)
+    except EmptyResult as e:
+        logging.error(e)
+        return {}
+    except Exception as e:
+        logging.error(e)
+        return {}
